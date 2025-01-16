@@ -1,4 +1,10 @@
-
+/*
+inter.cpp
+-Handles parsing and execution of program
+-Gets tokens from lex.cpp
+-Enforces syntax & semantics
+-Stores variable names, maps them to values (if they have one)
+*/
 #include "parserInterp.h"
 
 map<string, bool> defVar;

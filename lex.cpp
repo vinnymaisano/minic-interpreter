@@ -2,6 +2,7 @@
  * lex.cpp
  * Lexical Analyzer for the Mini C-Like Language
  * CS280 - Fall 2024
+ * -Scans input file char by char, returns token
  */
 
 #include <cctype>
@@ -30,9 +31,7 @@ LexItem id_or_kw(const string& lexeme , int linenum)
 		
 	};
 	Token tt ;
-	//convert the lexeme to all lower case letters
 	
-	//cout << "inside id_or_kw " << lexeme << endl;
 	for(int i = 0; i < lexeme.length(); i++)
 	{
 		strlexeme[i] = tolower(strlexeme[i]);

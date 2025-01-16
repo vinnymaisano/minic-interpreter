@@ -1,3 +1,13 @@
+/*
+val.cpp
+-Wrapper class for all data types (int, float, string, char, bool)
+-Supports mixed-mode operations
+-Enforces type-checking
+
+*Not the most efficient way to implement this but this was the template given for this project
+
+*/
+
 #include "val.h"
 
 Value Value::operator+(const Value& op) const {
