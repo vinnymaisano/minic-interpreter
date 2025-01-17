@@ -3,6 +3,7 @@ Interpreter for a mini c-like language that supports variable declaration and as
 
 # How to Use
 -Download minic.exe
+
 -In the directory that minic.exe is installed in, pass in the name of your file when running minic.exe
 
 Ex. command: ./minic.exe filename
