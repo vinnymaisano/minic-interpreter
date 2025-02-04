@@ -7,6 +7,7 @@ Interpreter for a mini c-like language that supports variable declaration and as
 -In the directory that minic.exe is installed in, pass in the name of your file when running minic.exe
 
 Example: 
+
 ![image](https://github.com/user-attachments/assets/bb3d2ace-aec1-42af-ac5f-96099b0b757a)
 
 Example syntax:
