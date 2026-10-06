@@ -47,6 +47,48 @@ void ParseError(int line, string msg)
 	cout << line << ": " << msg << endl;
 }
 
+// describe a token for error messages
+static string TokStr(const LexItem & t)
+{
+	if (t == DONE)
+		return "end of file";
+	return "'" + t.GetLexeme() + "'";
+}
+
+// name of a declared type
+static string TypeStr(Token t)
+{
+	switch (t) {
+		case INT: return "int";
+		case FLOAT: return "float";
+		case CHAR: return "char";
+		case STRING: return "string";
+		case BOOL: return "bool";
+		default: return "unknown";
+	}
+}
+
+// name of a value's type
+static string TypeStr(const Value & v)
+{
+	switch (v.GetType()) {
+		case VINT: return "int";
+		case VREAL: return "float";
+		case VCHAR: return "char";
+		case VSTRING: return "string";
+		case VBOOL: return "bool";
+		default: return "error";
+	}
+}
+
+// name of a unary operator from its sign code
+static string SignStr(int sign)
+{
+	if (sign == -1) return "-";
+	if (sign == 1) return "+";
+	return "!";
+}
+
 //Program is: Prog = PROGRAM IDENT CompStmt
 bool Prog(istream& in, int& line)
 {
@@ -67,7 +109,7 @@ bool Prog(istream& in, int& line)
 		}
 		else
 		{
-			ParseError(line, "Missing Program name");
+			ParseError(line, "Missing Program name: found " + TokStr(tok));
 			return false;
 		}
 	}
@@ -79,7 +121,7 @@ bool Prog(istream& in, int& line)
 	
 	else
 	{
-		ParseError(line, "Missing Program keyword");
+		ParseError(line, "Missing Program keyword: found " + TokStr(tok));
 		return false;
 	}
 }//End of Prog
@@ -166,7 +208,7 @@ bool Stmt(istream& in, int& line) {
 		}
 		else
 		{
-			ParseError(line, "Missing semicolon at end of Statement.");
+			ParseError(line, "Missing semicolon at end of Statement: found " + TokStr(t));
 			return false;
 		}	
 		break;
@@ -182,7 +224,7 @@ bool Stmt(istream& in, int& line) {
 		break;
 	default:
 		Parser::PushBackToken(t);
-		
+		ParseError(line, "Invalid statement: unexpected " + TokStr(t));
 		return false;
 	}
 
@@ -214,7 +256,7 @@ bool CompStmt(istream& in, int& line)
 		}
 		else
 		{
-			ParseError(line, "Missing right brace.");
+			ParseError(line, "Missing right brace: found " + TokStr(t));
 			return false;
 		}
 	}
@@ -244,7 +286,7 @@ bool ControlStmt(istream& in, int& line) {
 		}
 		else
 		{
-			ParseError(line, "Missing semicolon at end of Statement.");
+			ParseError(line, "Missing semicolon at end of Statement: found " + TokStr(t));
 			return false;
 		}
 		
@@ -266,7 +308,7 @@ bool ControlStmt(istream& in, int& line) {
 		}
 		else
 		{
-			ParseError(line, "Missing semicolon at end of Statement.");
+			ParseError(line, "Missing semicolon at end of Statement: found " + TokStr(t));
 			return false;
 		}
 		
@@ -302,14 +344,14 @@ bool VarList(istream& in, int& line, LexItem & idtok) {
 		// get name of variable
 		identstr = tok.GetLexeme();
 		// if variable not defined yet, set to true
-		if (!(defVar.find(identstr)->second))
+		if (defVar.find(identstr) == defVar.end())
 		{
 			defVar[identstr] = true;
 			type[identstr] = idtok.GetToken(); // record the type of this variable
 		}
 		else
 		{
-			ParseError(line, "Variable Redefinition");
+			ParseError(line, "Variable Redefinition: '" + identstr + "' is already declared");
 			return false;
 		}
 		
@@ -317,7 +359,7 @@ bool VarList(istream& in, int& line, LexItem & idtok) {
 	else
 	{
 	
-		ParseError(line, "Missing Variable Name");
+		ParseError(line, "Missing Variable Name: found " + TokStr(tok));
 		return false;
 	}
 		
@@ -329,7 +371,7 @@ bool VarList(istream& in, int& line, LexItem & idtok) {
 		exprstatus = Expr(in, line, retval);
 		if(!exprstatus)
 		{
-			ParseError(line, "Incorrect initialization for a variable.");
+			ParseError(line, "Incorrect initialization for variable '" + identstr + "'");
 			return false;
 		}
 		
@@ -339,7 +381,7 @@ bool VarList(istream& in, int& line, LexItem & idtok) {
 					retval = Value((int)retval.GetReal());
 				}
 				else if (!retval.IsInt()) {
-					ParseError(line, "Type mismatch in INT declaration.");
+					ParseError(line, "Type mismatch in INT declaration: cannot initialize int variable '" + identstr + "' with a value of type " + TypeStr(retval));
 					return false;
 				}
 				break;
@@ -348,7 +390,7 @@ bool VarList(istream& in, int& line, LexItem & idtok) {
 					retval = Value((float)retval.GetInt());
 				}
 				else if (!retval.IsReal()) {
-					ParseError(line, "Type mismatch in FLOAT declaration.");
+					ParseError(line, "Type mismatch in FLOAT declaration: cannot initialize float variable '" + identstr + "' with a value of type " + TypeStr(retval));
 					return false;
 				}
 				break;
@@ -357,22 +399,22 @@ bool VarList(istream& in, int& line, LexItem & idtok) {
 					retval = Value((char)retval.GetInt());
 				}
 				else if (!retval.IsChar()) {
-					ParseError(line, "Type mismatch in CHAR declaration.");
+					ParseError(line, "Type mismatch in CHAR declaration: cannot initialize char variable '" + identstr + "' with a value of type " + TypeStr(retval));
 					return false;
 				}
 				break;
 			case STRING:
 				if (retval.IsChar()) {
-					retval = Value(retval.GetChar() + "");
+					retval = Value(string(1, retval.GetChar()));
 				}
 				else if (!retval.IsString()) {
-					ParseError(line, "Type mismatch in STRING declaration.");
+					ParseError(line, "Type mismatch in STRING declaration: cannot initialize string variable '" + identstr + "' with a value of type " + TypeStr(retval));
 					return false;
 				}
 				break;
 			case BOOL:
 				if (!retval.IsBool()) {
-					ParseError(line, "Type mismatch in BOOL declaration.");
+					ParseError(line, "Type mismatch in BOOL declaration: cannot initialize bool variable '" + identstr + "' with a value of type " + TypeStr(retval));
 					return false;
 				}
 				break;
@@ -410,7 +452,7 @@ bool VarList(istream& in, int& line, LexItem & idtok) {
 	}
 	else if(tok == ERR)
 	{
-		ParseError(line, "Unrecognized Input Pattern");
+		ParseError(line, "Unrecognized Input Pattern: " + TokStr(tok));
 		
 		return false;
 	}
@@ -432,7 +474,7 @@ bool PrintStmt(istream& in, int& line) {
 	t = Parser::GetNextToken(in, line);
 	if( t != LPAREN ) {
 		
-		ParseError(line, "Missing Left Parenthesis");
+		ParseError(line, "Missing Left Parenthesis after print: found " + TokStr(t));
 		return false;
 	}
 	
@@ -451,7 +493,7 @@ bool PrintStmt(istream& in, int& line) {
 	t = Parser::GetNextToken(in, line);
 	if(t != RPAREN ) {
 		
-		ParseError(line, "Missing Right Parenthesis");
+		ParseError(line, "Missing Right Parenthesis in print: found " + TokStr(t));
 		while (!(*ValQue).empty())
 		{
 			ValQue->pop();
@@ -478,7 +520,7 @@ bool IfStmt(istream& in, int& line) {
 	
 	t = Parser::GetNextToken(in, line);
 	if( t != LPAREN ) {
-		ParseError(line, "Missing Left Parenthesis");
+		ParseError(line, "Missing Left Parenthesis after if: found " + TokStr(t));
 		return false;
 	}
 	
@@ -490,14 +532,14 @@ bool IfStmt(istream& in, int& line) {
 		return false;
 	}
 	if (!retval.IsBool()) {
-		ParseError(line, "Invalid type for If statement condition.");
+		ParseError(line, "Invalid type for If statement condition: expected bool but got " + TypeStr(retval));
 		return false;
 	}
 	
 	t = Parser::GetNextToken(in, line);
 	if(t != RPAREN ) {
 	
-		ParseError(line, "Missing Right Parenthesis");
+		ParseError(line, "Missing Right Parenthesis after if condition: found " + TokStr(t));
 		return false;
 	}
 	nestlevel +=1;
@@ -672,9 +714,9 @@ bool Var(istream& in, int& line, LexItem & idtok) {
 		identstr = tok.GetLexeme();
 		
 		// variable not declared
-		if (!(defVar.find(identstr)->second))
+		if (defVar.find(identstr) == defVar.end())
 		{
-			ParseError(line, "Undeclared Variable");
+			ParseError(line, "Undeclared Variable: '" + identstr + "'");
 			return false;
 		}
 		// get the type of this variable
@@ -712,7 +754,7 @@ bool AssignStmt(istream& in, int& line) {
 			// operation is a combined assignment, variable must be initialized first
 			if (op != ASSOP) {
 				if (vals.count(var.GetLexeme()) == 0) {
-					ParseError(line, "Invalid assignment, variable does not have a value.");
+					ParseError(line, "Invalid assignment: '" + var.GetLexeme() + "' must have a value before using " + TokStr(op));
 					return false;
 				}
 			}
@@ -738,7 +780,7 @@ bool AssignStmt(istream& in, int& line) {
 						ret = Value((int)ret.GetReal());
 					}
 					else if (!ret.IsInt()) {
-						ParseError(line, "Illegal mixed-mode assignment operation.");
+						ParseError(line, "Illegal mixed-mode assignment operation: cannot assign a value of type " + TypeStr(ret) + " to " + TypeStr(var.GetToken()) + " variable '" + var.GetLexeme() + "'");
 						return false;
 					}
 					break;
@@ -747,32 +789,31 @@ bool AssignStmt(istream& in, int& line) {
 						ret = Value((float)ret.GetInt());
 					}
 					else if (!ret.IsReal()) {
-						ParseError(line, "Illegal mixed-mode assignment operation.");
+						ParseError(line, "Illegal mixed-mode assignment operation: cannot assign a value of type " + TypeStr(ret) + " to " + TypeStr(var.GetToken()) + " variable '" + var.GetLexeme() + "'");
 						return false;
 					}
 					break;
 				case CHAR:
 					if (ret.IsInt()) {
-						// THIS IS WHERE CHAR* EXCEPTION HAPPENED
-						//ret = Value((char)ret.GetInt());
+						ret = Value((char)ret.GetInt());
 					}
 					else if (!ret.IsChar()) {	
-						ParseError(line, "Illegal mixed-mode assignment operation.");
+						ParseError(line, "Illegal mixed-mode assignment operation: cannot assign a value of type " + TypeStr(ret) + " to " + TypeStr(var.GetToken()) + " variable '" + var.GetLexeme() + "'");
 						return false;
 					}
 					break;
 				case STRING:
 					if (ret.IsChar()) {
-						ret = Value(ret.GetChar() + "");
+						ret = Value(string(1, ret.GetChar()));
 					}
 					else if (!ret.IsString()) {
-						ParseError(line, "Illegal mixed-mode assignment operation.");
+						ParseError(line, "Illegal mixed-mode assignment operation: cannot assign a value of type " + TypeStr(ret) + " to " + TypeStr(var.GetToken()) + " variable '" + var.GetLexeme() + "'");
 						return false;
 					}
 					break;
 				case BOOL:
 					if (!ret.IsBool()) {
-						ParseError(line, "Illegal mixed-mode assignment operation.");
+						ParseError(line, "Illegal mixed-mode assignment operation: cannot assign a value of type " + TypeStr(ret) + " to " + TypeStr(var.GetToken()) + " variable '" + var.GetLexeme() + "'");
 						return false;
 					}
 					break;
@@ -780,6 +821,14 @@ bool AssignStmt(istream& in, int& line) {
 					cout << "Assignment default case. Should not execute." << endl;
 					return false;
 					break; 
+			}
+
+			// check for division by 0 in /= and %=
+			if (op == DIVASSOP || op == REMASSOP) {
+				if ((ret.IsInt() && ret.GetInt() == 0) || (ret.IsChar() && ret.GetChar() == 0) || (ret.IsReal() && ret.GetReal() == 0.0)) {
+					ParseError(line, "Run-Time Error-Illegal division by 0");
+					return false;
+				}
 			}
 
 			// initialize the variable using the value from the expression
@@ -821,7 +870,7 @@ bool AssignStmt(istream& in, int& line) {
 			return false;
 		}
 		else {
-			ParseError(line, "Missing Assignment Operator");
+			ParseError(line, "Missing Assignment Operator after '" + var.GetLexeme() + "': found " + TokStr(op));
 			return false;
 		}
 	}
@@ -882,10 +931,12 @@ bool Expr(istream& in, int& line, Value & retVal) {
 	while ( tok == OR ) 
 	{
 		Value nextval;
+		Value left = retVal;
+		string opstr = tok.GetLexeme();
 		t1 = LogANDExpr(in, line, nextval);
 		if( !t1 ) 
 		{
-			ParseError(line, "Missing operand after operator");
+			ParseError(line, "Missing operand after operator '" + opstr + "'");
 			return false;
 		}
 		
@@ -898,7 +949,7 @@ bool Expr(istream& in, int& line, Value & retVal) {
 
 		retVal = retVal || nextval;
 		if (retVal.IsErr()) {
-			ParseError(line, "Illegal operand types for the operation.");
+			ParseError(line, "Illegal operand types for '" + opstr + "': " + TypeStr(left) + " and " + TypeStr(nextval));
 			return false;
 		}
 	}
@@ -924,10 +975,12 @@ bool LogANDExpr(istream& in, int& line, Value & retVal) {
 	while ( tok == AND ) 
 	{
 		Value nextval;
+		Value left = retVal;
+		string opstr = tok.GetLexeme();
 		t1 = EqualExpr(in, line, nextval);
 		if( !t1 ) 
 		{
-			ParseError(line, "Missing operand after operator");
+			ParseError(line, "Missing operand after operator '" + opstr + "'");
 			return false;
 		}
 		
@@ -940,7 +993,7 @@ bool LogANDExpr(istream& in, int& line, Value & retVal) {
 		
 		retVal = retVal && nextval;
 		if (retVal.IsErr()) {
-			ParseError(line, "Illegal operand type for logical AND operator.");
+			ParseError(line, "Illegal operand types for '" + opstr + "': " + TypeStr(left) + " and " + TypeStr(nextval));
 			return false;
 		}
 	}
@@ -968,11 +1021,13 @@ bool EqualExpr(istream& in, int& line, Value & retVal) {
 	if ( tok == EQ || tok == NEQ ) 
 	{
 		Value nextval;
+		Value left = retVal;
+		string opstr = tok.GetLexeme();
 		t1 = RelExpr(in, line, nextval);
 	
 		if( !t1 ) 
 		{
-			ParseError(line, "Missing operand after operator");
+			ParseError(line, "Missing operand after operator '" + opstr + "'");
 			return false;
 		}
 		
@@ -984,13 +1039,13 @@ bool EqualExpr(istream& in, int& line, Value & retVal) {
 			retVal = retVal != nextval;
 		}
 		if (retVal.IsErr()) {
-			ParseError(line, "Illegal operand type for the operation.");
+			ParseError(line, "Illegal operand types for '" + opstr + "': " + TypeStr(left) + " and " + TypeStr(nextval));
 			return false;
 		}
 		tok = Parser::GetNextToken(in, line);
 		if(tok == EQ || tok == NEQ)
 		{
-			ParseError(line, "Illegal Equality Expression.");
+			ParseError(line, "Illegal Equality Expression: equality operators cannot be chained");
 			return false;
 		}
 		else if(tok.GetToken() == ERR){
@@ -1023,11 +1078,13 @@ bool RelExpr(istream& in, int& line, Value & retVal) {
 	if ( tok == LTHAN || tok == GTHAN) 
 	{
 		Value nextval;
+		Value left = retVal;
+		string opstr = tok.GetLexeme();
 		t1 = AddExpr(in, line, nextval);
 
 		if( !t1 ) 
 		{
-			ParseError(line, "Missing operand after operator");
+			ParseError(line, "Missing operand after operator '" + opstr + "'");
 			return false;
 		}
 
@@ -1039,7 +1096,7 @@ bool RelExpr(istream& in, int& line, Value & retVal) {
 		}
 
 		if (retVal.IsErr()) {
-			ParseError(line, "Illegal operands for relational operator.");
+			ParseError(line, "Illegal operand types for '" + opstr + "': " + TypeStr(left) + " and " + TypeStr(nextval));
 			return false;
 		}
 		
@@ -1047,7 +1104,7 @@ bool RelExpr(istream& in, int& line, Value & retVal) {
 		
 		if(tok == LTHAN || tok == GTHAN)
 		{
-			ParseError(line, "Illegal Relational Expression.");
+			ParseError(line, "Illegal Relational Expression: relational operators cannot be chained");
 			return false;
 		}
 		else if(tok.GetToken() == ERR){
@@ -1080,10 +1137,12 @@ bool AddExpr(istream& in, int& line, Value & retVal) {
 	while ( tok == PLUS || tok == MINUS ) 
 	{
 		Value nextval;
+		Value left = retVal;
+		string opstr = tok.GetLexeme();
 		t1 = MultExpr(in, line, nextval);
 		if( !t1 ) 
 		{
-			ParseError(line, "Missing operand after operator");
+			ParseError(line, "Missing operand after operator '" + opstr + "'");
 			return false;
 		}
 
@@ -1096,7 +1155,7 @@ bool AddExpr(istream& in, int& line, Value & retVal) {
 		}
 
 		if (retVal.IsErr()) {
-			ParseError(line, "Illegal operand type for the operation.");
+			ParseError(line, "Illegal operand types for '" + opstr + "': " + TypeStr(left) + " and " + TypeStr(nextval));
 			return false;
 		}
 		
@@ -1137,10 +1196,12 @@ bool MultExpr(istream& in, int& line, Value & retVal) {
 		}
 		*/
 		Value nextval;
+		Value left = retVal;
+		string opstr = tok.GetLexeme();
 		t1 = UnaryExpr(in, line, nextval);
 	
 		if( !t1 ) {
-			ParseError(line, "Missing operand after operator");
+			ParseError(line, "Missing operand after operator '" + opstr + "'");
 			return false;
 		}
 
@@ -1150,8 +1211,8 @@ bool MultExpr(istream& in, int& line, Value & retVal) {
 		else if (tok == DIV) {
 			// check for div by 0
 			// not handled by checking IsErr b/c division by 0.0f is defined (inf)
-			if (nextval.IsInt()) {
-				if (nextval.GetInt() == 0) {
+			if (nextval.IsInt() || nextval.IsChar()) {
+				if ((nextval.IsInt() && nextval.GetInt() == 0) || (nextval.IsChar() && nextval.GetChar() == 0)) {
 					ParseError(line, "Run-Time Error-Illegal division by 0");
 					return false;
 				}
@@ -1166,11 +1227,15 @@ bool MultExpr(istream& in, int& line, Value & retVal) {
 			retVal = retVal / nextval;
 		}
 		else {
+			if ((nextval.IsInt() && nextval.GetInt() == 0) || (nextval.IsChar() && nextval.GetChar() == 0)) {
+				ParseError(line, "Run-Time Error-Illegal division by 0");
+				return false;
+			}
 			retVal = retVal % nextval;
 		}
 
 		if (retVal.IsErr()) {
-			ParseError(line, "Illegal operand type for the operation.");
+			ParseError(line, "Illegal operand types for '" + opstr + "': " + TypeStr(left) + " and " + TypeStr(nextval));
 			return false;
 		}
 		
@@ -1229,13 +1294,13 @@ bool PrimaryExpr(istream& in, int& line, int sign, Value & retVal) {
 
 		string lexeme = tok.GetLexeme();
 		//cout << "lexeme= " << lexeme << endl;
-		if (!(defVar.find(lexeme)->second)) {
-			ParseError(line, "Using Undeclared Variable");
+		if (defVar.find(lexeme) == defVar.end()) {
+			ParseError(line, "Using Undeclared Variable: '" + lexeme + "'");
 			return false;	
 		}
 		else if (vals.count(lexeme) == 0) {
 			// Variable does not have a value => uninitialized
-			ParseError(line, "Using uninitialized variable.");
+			ParseError(line, "Using uninitialized variable: '" + lexeme + "'");
 			return false;
 		}
 
@@ -1246,7 +1311,7 @@ bool PrimaryExpr(istream& in, int& line, int sign, Value & retVal) {
 			case INT:
 				// ! does not apply to INT
 				if (sign == 2) {
-					ParseError(line, "Illegal Operand Type for Sign Operator");
+					ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to " + TypeStr(type[lexeme]) + " variable '" + lexeme + "'");
 					return false;
 				}
 
@@ -1260,7 +1325,7 @@ bool PrimaryExpr(istream& in, int& line, int sign, Value & retVal) {
 				break;
 			case FLOAT:
 				if (sign == 2) {
-					ParseError(line, "Illegal Operand Type for Sign Operator");
+					ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to " + TypeStr(type[lexeme]) + " variable '" + lexeme + "'");
 					return false;
 				}
 
@@ -1274,21 +1339,21 @@ bool PrimaryExpr(istream& in, int& line, int sign, Value & retVal) {
 				break;
 			case CHAR:
 				if (sign != 0) {
-					ParseError(line, "Illegal Operand Type for Sign Operator");
+					ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to " + TypeStr(type[lexeme]) + " variable '" + lexeme + "'");
 					return false;
 				}
 				retVal = vals[lexeme];
 				return true;
 			case STRING:
 				if (sign != 0) {
-					ParseError(line, "Illegal Operand Type for Sign Operator");
+					ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to " + TypeStr(type[lexeme]) + " variable '" + lexeme + "'");
 					return false;
 				}
 				retVal = vals[lexeme];
 				return true;
 			case BOOL:
 				if (sign == 1 || sign == -1) {
-					ParseError(line, "Illegal Operand Type for Sign Operator");
+					ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to " + TypeStr(type[lexeme]) + " variable '" + lexeme + "'");
 					return false;
 				}
 
@@ -1314,7 +1379,7 @@ bool PrimaryExpr(istream& in, int& line, int sign, Value & retVal) {
 			// int literal
 			case ICONST:
 				if (sign == 2) {
-					ParseError(line, "Illegal Operand Type for Sign Operator");
+					ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to " + TokStr(tok));
 					return false;
 				}
 
@@ -1330,7 +1395,7 @@ bool PrimaryExpr(istream& in, int& line, int sign, Value & retVal) {
 			// float literal
 			case RCONST:
 				if (sign == 2) {
-					ParseError(line, "Illegal Operand Type for Sign Operator");
+					ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to " + TokStr(tok));
 					return false;
 				}
 
@@ -1347,7 +1412,7 @@ bool PrimaryExpr(istream& in, int& line, int sign, Value & retVal) {
 			case SCONST:
 				// cannot apply +, -, or ! to a string
 				if (sign != 0) {
-					ParseError(line, "Illegal Operand Type for Sign Operator");
+					ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to " + TokStr(tok));
 					return false;
 				}
 				retVal = Value(lexeme);
@@ -1355,7 +1420,7 @@ bool PrimaryExpr(istream& in, int& line, int sign, Value & retVal) {
 				break;
 			case CCONST:
 				if (sign != 0) {
-					ParseError(line, "Illegal Operand Type for Sign Operator");
+					ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to " + TokStr(tok));
 					return false;
 				}
 				retVal = Value(lexeme[0]);
@@ -1364,7 +1429,7 @@ bool PrimaryExpr(istream& in, int& line, int sign, Value & retVal) {
 			case BCONST:
 				// +, - do not apply to boolean
 				if (sign == 1 || sign == -1) {
-					ParseError(line, "Illegal Operand Type for Sign Operator");
+					ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to " + TokStr(tok));
 					return false;
 				}
 
@@ -1446,12 +1511,26 @@ bool PrimaryExpr(istream& in, int& line, int sign, Value & retVal) {
 			ParseError(line, "Missing expression after Left Parenthesis");
 			return false;
 		}
-		if( Parser::GetNextToken(in, line) == RPAREN )
+		LexItem rp = Parser::GetNextToken(in, line);
+		if( rp == RPAREN ) {
+			// apply unary operator to the parenthesized expression
+			Value inner = retVal;
+			if (sign == -1) {
+				retVal = retVal * Value(-1);
+			}
+			else if (sign == 2) {
+				retVal = !retVal;
+			}
+			if (retVal.IsErr()) {
+				ParseError(line, "Illegal Operand Type for Sign Operator: cannot apply '" + SignStr(sign) + "' to an expression of type " + TypeStr(inner));
+				return false;
+			}
 			return ex;
+		}
 		else 
 		{
-			Parser::PushBackToken(tok);
-			ParseError(line, "Missing right Parenthesis after expression");
+			Parser::PushBackToken(rp);
+			ParseError(line, "Missing right Parenthesis after expression: found " + TokStr(rp));
 			return false;
 		}
 	}
