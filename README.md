@@ -6,10 +6,6 @@ Interpreter for a mini c-like language that supports variable declaration and as
 
 -Run your code: ```./minic file.txt```
 
-Example: 
-
-![image](https://github.com/user-attachments/assets/bb3d2ace-aec1-42af-ac5f-96099b0b757a)
-
 Example syntax:
 
 ![image](https://github.com/user-attachments/assets/00da3b4c-c3a5-434c-aaca-933417b123ae)
