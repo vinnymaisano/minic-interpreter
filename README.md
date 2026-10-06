@@ -2,9 +2,9 @@
 Interpreter for a mini c-like language that supports variable declaration and assignment, arithmetical operations, precedence of operators, type-checking, mixed-mode operations, and nested if-statements
 
 # How to Use
--Download minic.exe
+-Compile: ```g++ main.cpp interp.cpp val.cpp lex.cpp -o minic```
 
--In the directory that minic.exe is installed in, pass in the name of your file when running minic.exe
+-Run your code: ```./minic file.txt```
 
 Example: 
 
